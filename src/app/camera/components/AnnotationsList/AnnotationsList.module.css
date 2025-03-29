@@ -6,6 +6,8 @@
   gap: var(--size-4);
   width: 300px;
   max-width: 100%;
+  list-style: none;
+  padding-inline: var(--size-4);
 }
 
 .annotation {

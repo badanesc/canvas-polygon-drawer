@@ -1,7 +1,7 @@
-import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons"
-import styles from "./camera.module.css"
+import {ArrowLeftIcon, ArrowRightIcon} from '@radix-ui/react-icons';
+import styles from './camera.module.css';
 
-import AnnotationsList from "./components/AnnotationsList/AnnotationsList"
+import AnnotationsList from './components/AnnotationsList/AnnotationsList';
 
 export default function CameraPage() {
   return (
@@ -10,19 +10,22 @@ export default function CameraPage() {
 
       <div className={styles.workbench}>
         <div className={styles.workbenchHeader}>
-          <button>
+          <button className={styles.workbenchButton}>
             <ArrowLeftIcon />
             <span>Prev Camera</span>
           </button>
-          <h1>Workbench</h1>
-          <button>
-            <ArrowRightIcon />
+          <button className={styles.workbenchButton}>
             <span>Next Camera</span>
+            <ArrowRightIcon />
           </button>
         </div>
 
-        <div>
-          <img src="https://picsum.photos/300/200" alt="Working surface" />
+        <div className={styles.imageWrapper}>
+          <img
+            className={styles.image}
+            src="https://picsum.photos/300/200"
+            alt="Working surface"
+          />
         </div>
       </div>
     </div>
