@@ -1,0 +1,9 @@
+.whiteboard {
+  position: absolute;
+  inset: 0;
+}
+
+.whiteboard canvas {
+  position: absolute;
+  inset: 0;
+}

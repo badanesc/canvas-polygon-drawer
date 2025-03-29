@@ -43,6 +43,7 @@
 }
 
 .imageWrapper {
+  position: relative;
 }
 
 .image {
