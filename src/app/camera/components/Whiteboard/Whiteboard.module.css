@@ -8,6 +8,15 @@
   inset: 0;
 }
 
+#background-canvas {
+  z-index: 1;
+}
+
+#interactive-canvas {
+  z-index: 2;
+  pointer-events: auto;
+}
+
 .toolbar {
   position: absolute;
   top: 16px;

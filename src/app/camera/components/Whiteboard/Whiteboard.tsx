@@ -18,6 +18,7 @@ import {getHitElement} from '@/app/utils/hitTest';
 export default function Whiteboard() {
   const whiteboardRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const interactiveCanvasRef = useRef<HTMLCanvasElement>(null);
   const [bgCanvasSize, setBgCanvasSize] = useState({width: 0, height: 0});
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [currentMode, setCurrentMode] = useState<CanvasMode>('select');
@@ -43,41 +44,61 @@ export default function Whiteboard() {
     };
   }, []);
 
-  // Effect to redraw all shapes when canvas size changes or selection changes
+  // Effect to redraw static shapes when canvas size changes
   useLayoutEffect(() => {
     const canvas = bgCanvasRef.current;
     if (!canvas) return;
 
     clearCanvas(canvas);
 
-    // Redraw all shapes
-    shapes.forEach((shape) => {
-      switch (shape.type) {
-        case 'arrow':
-          drawArrow(
-            canvas,
-            {x: shape.startX, y: shape.startY},
-            {x: shape.endX, y: shape.endY},
-          );
-          // Draw selection outline if this shape is selected
-          if (selectedShape?.id === shape.id) {
-            drawArrowSelection(
+    // Redraw all shapes except the selected one
+    shapes
+      .filter((shape) => shape.id !== selectedShape?.id)
+      .forEach((shape) => {
+        switch (shape.type) {
+          case 'arrow':
+            drawArrow(
               canvas,
               {x: shape.startX, y: shape.startY},
               {x: shape.endX, y: shape.endY},
             );
-          }
+            break;
+          case 'polygon':
+            drawPolygon(canvas, shape.points);
+            break;
+        }
+      });
+  }, [bgCanvasSize, shapes, selectedShape]);
+
+  // Effect to redraw interactive elements (selection outlines and selected shape)
+  useLayoutEffect(() => {
+    const canvas = interactiveCanvasRef.current;
+    if (!canvas) return;
+
+    clearCanvas(canvas);
+
+    if (selectedShape) {
+      // First draw the selected shape
+      switch (selectedShape.type) {
+        case 'arrow':
+          drawArrow(
+            canvas,
+            {x: selectedShape.startX, y: selectedShape.startY},
+            {x: selectedShape.endX, y: selectedShape.endY},
+          );
+          drawArrowSelection(
+            canvas,
+            {x: selectedShape.startX, y: selectedShape.startY},
+            {x: selectedShape.endX, y: selectedShape.endY},
+          );
           break;
         case 'polygon':
-          drawPolygon(canvas, shape.points);
-          // Draw selection outline if this shape is selected
-          if (selectedShape?.id === shape.id) {
-            drawPolygonSelection(canvas, shape.points);
-          }
+          drawPolygon(canvas, selectedShape.points);
+          drawPolygonSelection(canvas, selectedShape.points);
           break;
       }
-    });
-  }, [bgCanvasSize, shapes, selectedShape]);
+    }
+  }, [bgCanvasSize, selectedShape]);
 
   const handleShapeComplete = (shape: Shape) => {
     setShapes((prev) => [...prev, shape]);
@@ -229,6 +250,13 @@ export default function Whiteboard() {
       <canvas
         id="background-canvas"
         ref={bgCanvasRef}
+        width={bgCanvasSize.width}
+        height={bgCanvasSize.height}
+      />
+
+      <canvas
+        id="interactive-canvas"
+        ref={interactiveCanvasRef}
         width={bgCanvasSize.width}
         height={bgCanvasSize.height}
         onPointerDown={handlePointerDown}
