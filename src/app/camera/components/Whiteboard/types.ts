@@ -1,4 +1,4 @@
-export type DrawingMode = 'arrow' | 'polygon';
+export type CanvasMode = 'arrow' | 'polygon' | 'select';
 
 export type Arrow = {
   id: string;

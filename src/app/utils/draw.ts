@@ -150,3 +150,46 @@ export const drawPolygonPreview = (
   // Draw points
   drawPolygonPoints(canvas, points);
 };
+
+export const drawArrowSelection = (
+  canvas: HTMLCanvasElement,
+  start: {x: number; y: number},
+  end: {x: number; y: number},
+) => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Calculate the angle and length
+  const angle = Math.atan2(end.y - start.y, end.x - start.x);
+  const length = Math.sqrt(
+    Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2),
+  );
+
+  // Arrow head parameters
+  const headLength = Math.min(20, length / 3); // Arrow head length
+  const headAngle = Math.PI / 6; // 30 degrees
+
+  // Calculate arrow head points
+  const x1 = end.x - headLength * Math.cos(angle - headAngle);
+  const y1 = end.y - headLength * Math.sin(angle - headAngle);
+  const x2 = end.x - headLength * Math.cos(angle + headAngle);
+  const y2 = end.y - headLength * Math.sin(angle + headAngle);
+
+  // Calculate bounding box with padding
+  const padding = 10; // pixels of padding
+  const minX = Math.min(start.x, end.x, x1, x2) - padding;
+  const maxX = Math.max(start.x, end.x, x1, x2) + padding;
+  const minY = Math.min(start.y, end.y, y1, y2) - padding;
+  const maxY = Math.max(start.y, end.y, y1, y2) + padding;
+
+  // Draw selection rectangle
+  ctx.beginPath();
+  ctx.rect(minX, minY, maxX - minX, maxY - minY);
+
+  // Set selection style and stroke
+  ctx.strokeStyle = 'blue';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]); // Make the outline dashed
+  ctx.stroke();
+  ctx.setLineDash([]); // Reset line dash
+};
