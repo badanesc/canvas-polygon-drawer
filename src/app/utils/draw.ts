@@ -82,13 +82,20 @@ export const drawPolygonPoints = (
   if (!ctx) return;
 
   points.forEach((point, index) => {
+    // Draw the resize handle
     ctx.beginPath();
-    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
     ctx.fillStyle = index === selectedPointIndex ? '#00ff00' : '#ff6b6b';
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Draw the center dot
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
   });
 };
 
@@ -155,6 +162,33 @@ export const drawPolygonPreview = (
   drawPolygonPoints(canvas, points);
 };
 
+export const drawArrowResizeHandles = (
+  canvas: HTMLCanvasElement,
+  start: {x: number; y: number},
+  end: {x: number; y: number},
+) => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Draw start handle
+  ctx.beginPath();
+  ctx.arc(start.x, start.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ff00';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Draw end handle
+  ctx.beginPath();
+  ctx.arc(end.x, end.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ff00';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+};
+
 export const drawArrowSelection = (
   canvas: HTMLCanvasElement,
   start: {x: number; y: number},
@@ -196,6 +230,9 @@ export const drawArrowSelection = (
   ctx.setLineDash([5, 5]); // Make the outline dashed
   ctx.stroke();
   ctx.setLineDash([]); // Reset line dash
+
+  // Draw resize handles
+  drawArrowResizeHandles(canvas, start, end);
 };
 
 export const drawPolygonSelection = (

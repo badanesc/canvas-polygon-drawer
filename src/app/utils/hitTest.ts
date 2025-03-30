@@ -197,7 +197,7 @@ export const isPointNearPolygonPoint = (
   const distance = Math.sqrt(
     Math.pow(pointX - polygonPoint.x, 2) + Math.pow(pointY - polygonPoint.y, 2),
   );
-  return distance <= POINT_HIT_THRESHOLD;
+  return distance <= 6;
 };
 
 export const getHitPolygonPoint = (
@@ -216,6 +216,36 @@ export const getHitPolygonPoint = (
   return null;
 };
 
+export type ArrowHandleHit = {
+  handle: 'start' | 'end';
+} | null;
+
+export const isPointNearArrowHandle = (
+  pointX: number,
+  pointY: number,
+  handleX: number,
+  handleY: number,
+): boolean => {
+  const distance = Math.sqrt(
+    Math.pow(pointX - handleX, 2) + Math.pow(pointY - handleY, 2),
+  );
+  return distance <= POINT_HIT_THRESHOLD;
+};
+
+export const getHitArrowHandle = (
+  pointX: number,
+  pointY: number,
+  arrow: Arrow,
+): ArrowHandleHit => {
+  if (isPointNearArrowHandle(pointX, pointY, arrow.startX, arrow.startY)) {
+    return {handle: 'start'};
+  }
+  if (isPointNearArrowHandle(pointX, pointY, arrow.endX, arrow.endY)) {
+    return {handle: 'end'};
+  }
+  return null;
+};
+
 export const getHitElement = (
   coordX: number,
   coordY: number,
@@ -224,11 +254,16 @@ export const getHitElement = (
 ) => {
   // If we have a selected shape, check if the point is in its selection rectangle
   if (selectedShape) {
-    if (
-      selectedShape.type === 'arrow' &&
-      isPointInArrowSelection(coordX, coordY, selectedShape)
-    ) {
-      return selectedShape;
+    if (selectedShape.type === 'arrow') {
+      // First check if we hit a resize handle
+      const handleHit = getHitArrowHandle(coordX, coordY, selectedShape);
+      if (handleHit) {
+        return selectedShape;
+      }
+      // Then check if we hit the selection rectangle
+      if (isPointInArrowSelection(coordX, coordY, selectedShape)) {
+        return selectedShape;
+      }
     }
     if (
       selectedShape.type === 'polygon' &&
@@ -251,4 +286,94 @@ export const getHitElement = (
           return isPointInPolygon(coordX, coordY, element);
       }
     });
+};
+
+export type PolygonLineHit = {
+  lineIndex: number;
+  point: {x: number; y: number};
+} | null;
+
+export const isPointNearLineSegment = (
+  pointX: number,
+  pointY: number,
+  lineStartX: number,
+  lineStartY: number,
+  lineEndX: number,
+  lineEndY: number,
+): boolean => {
+  const distance = distanceToLineSegment(
+    pointX,
+    pointY,
+    lineStartX,
+    lineStartY,
+    lineEndX,
+    lineEndY,
+  );
+  return distance <= HIT_THRESHOLD;
+};
+
+export const getClosestPointOnLineSegment = (
+  pointX: number,
+  pointY: number,
+  lineStartX: number,
+  lineStartY: number,
+  lineEndX: number,
+  lineEndY: number,
+): {x: number; y: number} => {
+  const dx = lineEndX - lineStartX;
+  const dy = lineEndY - lineStartY;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  // If line segment is just a point, return that point
+  if (length === 0) {
+    return {x: lineStartX, y: lineStartY};
+  }
+
+  // Calculate projection of point onto line
+  const t =
+    ((pointX - lineStartX) * dx + (pointY - lineStartY) * dy) /
+    (length * length);
+
+  // If projection is outside line segment, return nearest endpoint
+  if (t < 0) {
+    return {x: lineStartX, y: lineStartY};
+  }
+  if (t > 1) {
+    return {x: lineEndX, y: lineEndY};
+  }
+
+  // Calculate projection point
+  return {
+    x: lineStartX + t * dx,
+    y: lineStartY + t * dy,
+  };
+};
+
+export const getHitPolygonLine = (
+  pointX: number,
+  pointY: number,
+  polygon: Polygon,
+): PolygonLineHit => {
+  for (let i = 0; i < polygon.points.length; i++) {
+    const start = polygon.points[i];
+    const end = polygon.points[(i + 1) % polygon.points.length];
+
+    if (
+      isPointNearLineSegment(pointX, pointY, start.x, start.y, end.x, end.y)
+    ) {
+      const closestPoint = getClosestPointOnLineSegment(
+        pointX,
+        pointY,
+        start.x,
+        start.y,
+        end.x,
+        end.y,
+      );
+      return {
+        lineIndex: i,
+        point: closestPoint,
+      };
+    }
+  }
+  return null;
 };

@@ -18,6 +18,10 @@ import {
   getHitElement,
   getHitPolygonPoint,
   PolygonPointHit,
+  getHitArrowHandle,
+  ArrowHandleHit,
+  getHitPolygonLine,
+  PolygonLineHit,
 } from '@/app/utils/hitTest';
 
 export default function Whiteboard() {
@@ -30,6 +34,7 @@ export default function Whiteboard() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({x: 0, y: 0});
   const [selectedPoint, setSelectedPoint] = useState<PolygonPointHit>(null);
+  const [resizingHandle, setResizingHandle] = useState<ArrowHandleHit>(null);
 
   // Effect to resize the canvas when the window is resized
   useLayoutEffect(() => {
@@ -147,6 +152,17 @@ export default function Whiteboard() {
         const hitPoint = getHitPolygonPoint(canvasX, canvasY, selectedShape);
         if (hitPoint) {
           setSelectedPoint(hitPoint);
+          setIsDragging(true);
+          return;
+        }
+      }
+
+      // If we have a selected arrow, check for handle hits first
+      if (selectedShape?.type === 'arrow') {
+        const handleHit = getHitArrowHandle(canvasX, canvasY, selectedShape);
+        if (handleHit) {
+          setResizingHandle(handleHit);
+          setIsDragging(true);
           return;
         }
       }
@@ -171,12 +187,13 @@ export default function Whiteboard() {
         setSelectedShape(null);
         setIsDragging(false);
         setSelectedPoint(null);
+        setResizingHandle(null);
       }
     }
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isDragging && selectedShape && currentMode === 'select') {
+    if (isDragging && currentMode === 'select') {
       const canvas = bgCanvasRef.current;
       if (!canvas) return;
 
@@ -184,12 +201,10 @@ export default function Whiteboard() {
       const canvasX = event.clientX - rect.left;
       const canvasY = event.clientY - rect.top;
 
-      if (selectedShape.type === 'arrow') {
-        // Calculate new position
-        const newStartX = canvasX - dragOffset.x;
-        const newStartY = canvasY - dragOffset.y;
-        const dx = selectedShape.endX - selectedShape.startX;
-        const dy = selectedShape.endY - selectedShape.startY;
+      if (selectedShape?.type === 'polygon' && selectedPoint) {
+        // Handle polygon point resizing
+        const newPoints = [...selectedShape.points];
+        newPoints[selectedPoint.pointIndex] = {x: canvasX, y: canvasY};
 
         // Update shape position and maintain selection
         setShapes((prev) =>
@@ -197,10 +212,7 @@ export default function Whiteboard() {
             shape.id === selectedShape.id
               ? {
                   ...shape,
-                  startX: newStartX,
-                  startY: newStartY,
-                  endX: newStartX + dx,
-                  endY: newStartY + dy,
+                  points: newPoints,
                 }
               : shape,
           ),
@@ -210,14 +222,105 @@ export default function Whiteboard() {
           prev?.id === selectedShape.id
             ? {
                 ...prev,
-                startX: newStartX,
-                startY: newStartY,
-                endX: newStartX + dx,
-                endY: newStartY + dy,
+                points: newPoints,
               }
             : prev,
         );
-      } else if (selectedShape.type === 'polygon') {
+        // Update selected point to match new position
+        setSelectedPoint((prev) =>
+          prev?.pointIndex === selectedPoint.pointIndex
+            ? {
+                ...prev,
+                point: {x: canvasX, y: canvasY},
+              }
+            : prev,
+        );
+      } else if (selectedShape?.type === 'arrow') {
+        if (resizingHandle) {
+          // Handle resizing
+          if (resizingHandle.handle === 'start') {
+            // Update shape position and maintain selection
+            setShapes((prev) =>
+              prev.map((shape) =>
+                shape.id === selectedShape.id
+                  ? {
+                      ...shape,
+                      startX: canvasX,
+                      startY: canvasY,
+                    }
+                  : shape,
+              ),
+            );
+            // Update selected shape to match new position
+            setSelectedShape((prev) =>
+              prev?.id === selectedShape.id
+                ? {
+                    ...prev,
+                    startX: canvasX,
+                    startY: canvasY,
+                  }
+                : prev,
+            );
+          } else if (resizingHandle.handle === 'end') {
+            // Update shape position and maintain selection
+            setShapes((prev) =>
+              prev.map((shape) =>
+                shape.id === selectedShape.id
+                  ? {
+                      ...shape,
+                      endX: canvasX,
+                      endY: canvasY,
+                    }
+                  : shape,
+              ),
+            );
+            // Update selected shape to match new position
+            setSelectedShape((prev) =>
+              prev?.id === selectedShape.id
+                ? {
+                    ...prev,
+                    endX: canvasX,
+                    endY: canvasY,
+                  }
+                : prev,
+            );
+          }
+        } else {
+          // Handle dragging
+          // Calculate new position
+          const newStartX = canvasX - dragOffset.x;
+          const newStartY = canvasY - dragOffset.y;
+          const dx = selectedShape.endX - selectedShape.startX;
+          const dy = selectedShape.endY - selectedShape.startY;
+
+          // Update shape position and maintain selection
+          setShapes((prev) =>
+            prev.map((shape) =>
+              shape.id === selectedShape.id
+                ? {
+                    ...shape,
+                    startX: newStartX,
+                    startY: newStartY,
+                    endX: newStartX + dx,
+                    endY: newStartY + dy,
+                  }
+                : shape,
+            ),
+          );
+          // Update selected shape to match new position
+          setSelectedShape((prev) =>
+            prev?.id === selectedShape.id
+              ? {
+                  ...prev,
+                  startX: newStartX,
+                  startY: newStartY,
+                  endX: newStartX + dx,
+                  endY: newStartY + dy,
+                }
+              : prev,
+          );
+        }
+      } else if (selectedShape?.type === 'polygon') {
         // Calculate new position
         const newStartX = canvasX - dragOffset.x;
         const newStartY = canvasY - dragOffset.y;
@@ -256,6 +359,47 @@ export default function Whiteboard() {
 
   const handlePointerUp = () => {
     setIsDragging(false);
+    setResizingHandle(null);
+  };
+
+  const handleDoubleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (currentMode === 'select' && selectedShape?.type === 'polygon') {
+      const canvas = bgCanvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const canvasX = event.clientX - rect.left;
+      const canvasY = event.clientY - rect.top;
+
+      // Check if we hit a polygon line
+      const lineHit = getHitPolygonLine(canvasX, canvasY, selectedShape);
+      if (lineHit) {
+        // Insert the new point after the line's start point
+        const newPoints = [...selectedShape.points];
+        newPoints.splice(lineHit.lineIndex + 1, 0, lineHit.point);
+
+        // Update shape with new point
+        setShapes((prev) =>
+          prev.map((shape) =>
+            shape.id === selectedShape.id
+              ? {
+                  ...shape,
+                  points: newPoints,
+                }
+              : shape,
+          ),
+        );
+        // Update selected shape to match
+        setSelectedShape((prev) =>
+          prev?.id === selectedShape.id
+            ? {
+                ...prev,
+                points: newPoints,
+              }
+            : prev,
+        );
+      }
+    }
   };
 
   return (
@@ -290,6 +434,7 @@ export default function Whiteboard() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onDoubleClick={handleDoubleClick}
       />
 
       {currentMode === 'arrow' && (
