@@ -13,7 +13,7 @@ export default function Whiteboard() {
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const [bgCanvasSize, setBgCanvasSize] = useState({width: 0, height: 0});
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [currentMode, setCurrentMode] = useState<DrawingMode>('arrow');
+  const [currentMode, setCurrentMode] = useState<DrawingMode>('polygon');
 
   // Effect to resize the canvas when the window is resized
   useLayoutEffect(() => {

@@ -63,6 +63,10 @@ export const drawPolygon = (
   // Close the polygon by connecting back to first point
   ctx.lineTo(points[0].x, points[0].y);
 
+  // Fill the polygon with semi-transparent red
+  ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+  ctx.fill();
+
   // Set style and stroke
   ctx.strokeStyle = 'red';
   ctx.lineWidth = 2;
