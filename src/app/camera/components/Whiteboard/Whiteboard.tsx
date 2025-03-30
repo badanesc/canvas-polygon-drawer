@@ -3,7 +3,12 @@ import React, {useRef, useState, useEffect, useLayoutEffect} from 'react';
 
 import styles from './Whiteboard.module.css';
 
-import {drawArrow, drawPolygon} from '@/app/utils/draw';
+import {
+  clearCanvas,
+  drawArrow,
+  drawPolygon,
+  drawPolygonPreview,
+} from '@/app/utils/draw';
 
 type DrawingMode = 'arrow' | 'polygon';
 
@@ -24,6 +29,8 @@ type Polygon = {
 
 type Shape = Arrow | Polygon;
 
+const SNAP_DISTANCE = 20; // Distance in pixels to snap to start point
+
 export default function Whiteboard() {
   const whiteboardRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,11 +40,31 @@ export default function Whiteboard() {
   const [startPoint, setStartPoint] = useState({x: 0, y: 0});
   const [currentPoint, setCurrentPoint] = useState({x: 0, y: 0});
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [currentMode, setCurrentMode] = useState<DrawingMode>('arrow');
+  const [currentMode, setCurrentMode] = useState<DrawingMode>('polygon');
   const [polygonPoints, setPolygonPoints] = useState<{x: number; y: number}[]>(
     [],
   );
 
+  // Handle escape key to cancel polygon drawing
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Escape' &&
+        currentMode === 'polygon' &&
+        polygonPoints.length > 0
+      ) {
+        setPolygonPoints([]);
+        if (drawingCanvasRef.current) {
+          clearCanvas(drawingCanvasRef.current);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentMode, polygonPoints.length]);
+
+  // Effect to resize the canvas when the window is resized
   useLayoutEffect(() => {
     if (!whiteboardRef.current) return;
 
@@ -57,14 +84,10 @@ export default function Whiteboard() {
 
   // Effect to redraw all shapes when canvas size changes
   useEffect(() => {
-    if (!bgCanvasRef.current) return;
     const canvas = bgCanvasRef.current;
+    if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear the canvas
-    ctx.clearRect(0, 0, bgCanvasSize.width, bgCanvasSize.height);
+    clearCanvas(canvas);
 
     // Redraw all shapes
     shapes.forEach((shape) => {
@@ -83,22 +106,19 @@ export default function Whiteboard() {
     });
   }, [bgCanvasSize, shapes]);
 
-  const drawShape = (
+  const drawPreviewShape = (
     canvas: HTMLCanvasElement,
     start: {x: number; y: number},
     end: {x: number; y: number},
   ) => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    clearCanvas(canvas);
 
     switch (currentMode) {
       case 'arrow':
         drawArrow(canvas, start, end);
         break;
       case 'polygon':
-        drawPolygon(canvas, polygonPoints);
+        drawPolygonPreview(canvas, polygonPoints, end, SNAP_DISTANCE);
         break;
     }
   };
@@ -109,6 +129,27 @@ export default function Whiteboard() {
     const y = event.clientY - rect.top;
 
     if (currentMode === 'polygon') {
+      // Check if we're near the start point
+      const startPoint = polygonPoints[0];
+      if (startPoint) {
+        const distance = Math.sqrt(
+          Math.pow(x - startPoint.x, 2) + Math.pow(y - startPoint.y, 2),
+        );
+        if (distance < SNAP_DISTANCE) {
+          // Complete the polygon
+          const newShape: Polygon = {
+            id: crypto.randomUUID(),
+            type: 'polygon',
+            points: [...polygonPoints],
+          };
+          setShapes((prev) => [...prev, newShape]);
+          setPolygonPoints([]);
+          if (drawingCanvasRef.current) {
+            clearCanvas(drawingCanvasRef.current);
+          }
+          return;
+        }
+      }
       setPolygonPoints((prev) => [...prev, {x, y}]);
       return;
     }
@@ -119,7 +160,7 @@ export default function Whiteboard() {
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawing && currentMode !== 'polygon') return;
 
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -131,49 +172,58 @@ export default function Whiteboard() {
   const onPointerUp = () => {
     if (!isDrawing && currentMode !== 'polygon') return;
 
-    const newShape: Shape = (() => {
-      switch (currentMode) {
-        case 'arrow':
-          return {
-            id: crypto.randomUUID(),
-            type: 'arrow',
-            startX: startPoint.x,
-            startY: startPoint.y,
-            endX: currentPoint.x,
-            endY: currentPoint.y,
-          };
-        case 'polygon':
-          return {
-            id: crypto.randomUUID(),
-            type: 'polygon',
-            points: [...polygonPoints, currentPoint],
-          };
-      }
-    })();
+    if (currentMode === 'arrow') {
+      const newShape: Arrow = {
+        id: crypto.randomUUID(),
+        type: 'arrow',
+        startX: startPoint.x,
+        startY: startPoint.y,
+        endX: currentPoint.x,
+        endY: currentPoint.y,
+      };
+      setShapes((prev) => [...prev, newShape]);
+      setIsDrawing(false);
+    }
+  };
 
-    setShapes((prev) => [...prev, newShape]);
-    setPolygonPoints([]);
-
-    // Clear the drawing canvas
-    if (drawingCanvasRef.current) {
-      const ctx = drawingCanvasRef.current.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(
-          0,
-          0,
-          drawingCanvasRef.current.width,
-          drawingCanvasRef.current.height,
-        );
+  const onDoubleClick = () => {
+    if (currentMode === 'polygon' && polygonPoints.length >= 3) {
+      const newShape: Polygon = {
+        id: crypto.randomUUID(),
+        type: 'polygon',
+        points: [...polygonPoints],
+      };
+      setShapes((prev) => [...prev, newShape]);
+      setPolygonPoints([]);
+      if (drawingCanvasRef.current) {
+        clearCanvas(drawingCanvasRef.current);
       }
     }
+  };
 
-    setIsDrawing(false);
+  const onContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    if (currentMode === 'polygon' && polygonPoints.length >= 3) {
+      const newShape: Polygon = {
+        id: crypto.randomUUID(),
+        type: 'polygon',
+        points: [...polygonPoints],
+      };
+      setShapes((prev) => [...prev, newShape]);
+      setPolygonPoints([]);
+
+      // Clear the drawing canvas
+      if (drawingCanvasRef.current) {
+        clearCanvas(drawingCanvasRef.current);
+      }
+    }
   };
 
   // Effect to draw the shape while dragging
   useEffect(() => {
-    if (!isDrawing || !drawingCanvasRef.current) return;
-    drawShape(drawingCanvasRef.current, startPoint, currentPoint);
+    if (!isDrawing && currentMode !== 'polygon') return;
+    if (!drawingCanvasRef.current) return;
+    drawPreviewShape(drawingCanvasRef.current, startPoint, currentPoint);
   }, [isDrawing, startPoint, currentPoint, currentMode, polygonPoints]);
 
   return (
@@ -193,6 +243,8 @@ export default function Whiteboard() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
+        onContextMenu={onContextMenu}
+        onDoubleClick={onDoubleClick}
       ></canvas>
     </div>
   );
