@@ -2,6 +2,7 @@ import {Shape, Arrow, Polygon} from '@/app/camera/components/Whiteboard/types';
 
 const HIT_THRESHOLD = 5; // pixels
 const SELECTION_PADDING = 10; // pixels
+const POINT_HIT_THRESHOLD = 6; // pixels
 
 function distanceToLineSegment(
   pointX: number,
@@ -182,6 +183,38 @@ function isPointInPolygon(
   }
   return inside;
 }
+
+export type PolygonPointHit = {
+  pointIndex: number;
+  point: {x: number; y: number};
+} | null;
+
+export const isPointNearPolygonPoint = (
+  pointX: number,
+  pointY: number,
+  polygonPoint: {x: number; y: number},
+): boolean => {
+  const distance = Math.sqrt(
+    Math.pow(pointX - polygonPoint.x, 2) + Math.pow(pointY - polygonPoint.y, 2),
+  );
+  return distance <= POINT_HIT_THRESHOLD;
+};
+
+export const getHitPolygonPoint = (
+  pointX: number,
+  pointY: number,
+  polygon: Polygon,
+): PolygonPointHit => {
+  for (let i = 0; i < polygon.points.length; i++) {
+    if (isPointNearPolygonPoint(pointX, pointY, polygon.points[i])) {
+      return {
+        pointIndex: i,
+        point: polygon.points[i],
+      };
+    }
+  }
+  return null;
+};
 
 export const getHitElement = (
   coordX: number,

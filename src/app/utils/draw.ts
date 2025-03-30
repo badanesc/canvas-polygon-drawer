@@ -76,15 +76,19 @@ export const drawPolygon = (
 export const drawPolygonPoints = (
   canvas: HTMLCanvasElement,
   points: Array<{x: number; y: number}>,
+  selectedPointIndex?: number,
 ) => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  points.forEach((point) => {
+  points.forEach((point, index) => {
     ctx.beginPath();
     ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = index === selectedPointIndex ? '#00ff00' : '#ff6b6b';
     ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   });
 };
 
