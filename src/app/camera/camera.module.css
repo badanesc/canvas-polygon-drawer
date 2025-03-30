@@ -51,4 +51,5 @@
   height: 100%;
   object-fit: contain;
   display: block;
+  object-position: top left;
 }

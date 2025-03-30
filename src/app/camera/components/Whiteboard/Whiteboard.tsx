@@ -3,6 +3,27 @@ import React, {useRef, useState, useEffect, useLayoutEffect} from 'react';
 
 import styles from './Whiteboard.module.css';
 
+import {drawArrow, drawPolygon} from '@/app/utils/draw';
+
+type DrawingMode = 'arrow' | 'polygon';
+
+type Arrow = {
+  id: string;
+  type: 'arrow';
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+};
+
+type Polygon = {
+  id: string;
+  type: 'polygon';
+  points: {x: number; y: number}[];
+};
+
+type Shape = Arrow | Polygon;
+
 export default function Whiteboard() {
   const whiteboardRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -11,6 +32,11 @@ export default function Whiteboard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState({x: 0, y: 0});
   const [currentPoint, setCurrentPoint] = useState({x: 0, y: 0});
+  const [shapes, setShapes] = useState<Shape[]>([]);
+  const [currentMode, setCurrentMode] = useState<DrawingMode>('arrow');
+  const [polygonPoints, setPolygonPoints] = useState<{x: number; y: number}[]>(
+    [],
+  );
 
   useLayoutEffect(() => {
     if (!whiteboardRef.current) return;
@@ -29,7 +55,35 @@ export default function Whiteboard() {
     };
   }, []);
 
-  const drawRect = (
+  // Effect to redraw all shapes when canvas size changes
+  useEffect(() => {
+    if (!bgCanvasRef.current) return;
+    const canvas = bgCanvasRef.current;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear the canvas
+    ctx.clearRect(0, 0, bgCanvasSize.width, bgCanvasSize.height);
+
+    // Redraw all shapes
+    shapes.forEach((shape) => {
+      switch (shape.type) {
+        case 'arrow':
+          drawArrow(
+            canvas,
+            {x: shape.startX, y: shape.startY},
+            {x: shape.endX, y: shape.endY},
+          );
+          break;
+        case 'polygon':
+          drawPolygon(canvas, shape.points);
+          break;
+      }
+    });
+  }, [bgCanvasSize, shapes]);
+
+  const drawShape = (
     canvas: HTMLCanvasElement,
     start: {x: number; y: number},
     end: {x: number; y: number},
@@ -37,17 +91,27 @@ export default function Whiteboard() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = end.x - start.x;
-    const height = end.y - start.y;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = 'red';
-    ctx.fillRect(start.x, start.y, width, height);
+    switch (currentMode) {
+      case 'arrow':
+        drawArrow(canvas, start, end);
+        break;
+      case 'polygon':
+        drawPolygon(canvas, polygonPoints);
+        break;
+    }
   };
 
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+
+    if (currentMode === 'polygon') {
+      setPolygonPoints((prev) => [...prev, {x, y}]);
+      return;
+    }
 
     setIsDrawing(true);
     setStartPoint({x, y});
@@ -65,12 +129,30 @@ export default function Whiteboard() {
   };
 
   const onPointerUp = () => {
-    if (!isDrawing) return;
+    if (!isDrawing && currentMode !== 'polygon') return;
 
-    // Draw the final rectangle on the background canvas
-    if (bgCanvasRef.current) {
-      drawRect(bgCanvasRef.current, startPoint, currentPoint);
-    }
+    const newShape: Shape = (() => {
+      switch (currentMode) {
+        case 'arrow':
+          return {
+            id: crypto.randomUUID(),
+            type: 'arrow',
+            startX: startPoint.x,
+            startY: startPoint.y,
+            endX: currentPoint.x,
+            endY: currentPoint.y,
+          };
+        case 'polygon':
+          return {
+            id: crypto.randomUUID(),
+            type: 'polygon',
+            points: [...polygonPoints, currentPoint],
+          };
+      }
+    })();
+
+    setShapes((prev) => [...prev, newShape]);
+    setPolygonPoints([]);
 
     // Clear the drawing canvas
     if (drawingCanvasRef.current) {
@@ -88,24 +170,11 @@ export default function Whiteboard() {
     setIsDrawing(false);
   };
 
-  // Effect to draw the rectangle while dragging
+  // Effect to draw the shape while dragging
   useEffect(() => {
     if (!isDrawing || !drawingCanvasRef.current) return;
-
-    const ctx = drawingCanvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    // Clear previous drawing
-    ctx.clearRect(
-      0,
-      0,
-      drawingCanvasRef.current.width,
-      drawingCanvasRef.current.height,
-    );
-
-    // Draw new rectangle
-    drawRect(drawingCanvasRef.current, startPoint, currentPoint);
-  }, [isDrawing, startPoint, currentPoint]);
+    drawShape(drawingCanvasRef.current, startPoint, currentPoint);
+  }, [isDrawing, startPoint, currentPoint, currentMode, polygonPoints]);
 
   return (
     <div className={styles.whiteboard} ref={whiteboardRef}>
