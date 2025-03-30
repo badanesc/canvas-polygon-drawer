@@ -10,7 +10,7 @@ import {useShapeManipulation} from './hooks/useShapeManipulation';
 import {usePolygonPointDeletion} from './hooks/usePolygonPointDeletion';
 import {usePolygonPointAddition} from './hooks/usePolygonPointAddition';
 import {useCanvasResize} from './hooks/useCanvasResize';
-import {PolygonPointHit, ArrowHandleHit} from '@/app/utils/hitTest';
+import {useElementDeletion} from './hooks/useElementDeletion';
 
 import {
   clearCanvas,
@@ -62,6 +62,8 @@ export default function Whiteboard() {
     setSelectedShape,
     setSelectedPoint,
   );
+
+  useElementDeletion(selectedShape, shapes, setShapes, setSelectedShape);
 
   const {handleDoubleClick} = usePolygonPointAddition(
     shapes,
