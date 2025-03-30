@@ -22,12 +22,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className={styles.imageWrapper}>
-          <img
-            className={styles.image}
-            src="https://picsum.photos/400/200"
-            alt="Working surface"
-          />
+        <div className={styles.workbenchContent}>
           <Whiteboard />
         </div>
       </div>

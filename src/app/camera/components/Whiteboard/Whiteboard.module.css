@@ -30,6 +30,48 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.fileInputContainer {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileInput {
+  display: none;
+}
+
+.fileInputLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.fileInputLabel:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+.fileInputLabel::before {
+  content: "📁";
+  font-size: 16px;
+}
+
 .toolButton {
   padding: 8px 16px;
   border: 1px solid #ccc;
