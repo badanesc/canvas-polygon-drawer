@@ -1,4 +1,4 @@
-import {Shape, Arrow} from '@/app/camera/components/Whiteboard/types';
+import {Shape, Arrow, Polygon} from '@/app/camera/components/Whiteboard/types';
 
 const HIT_THRESHOLD = 5; // pixels
 const SELECTION_PADDING = 10; // pixels
@@ -143,6 +143,46 @@ function isPointNearArrow(
   );
 }
 
+function isPointInPolygonSelection(
+  pointX: number,
+  pointY: number,
+  polygon: Polygon,
+): boolean {
+  // Calculate bounding box with padding
+  const minX = Math.min(...polygon.points.map((p) => p.x)) - SELECTION_PADDING;
+  const maxX = Math.max(...polygon.points.map((p) => p.x)) + SELECTION_PADDING;
+  const minY = Math.min(...polygon.points.map((p) => p.y)) - SELECTION_PADDING;
+  const maxY = Math.max(...polygon.points.map((p) => p.y)) + SELECTION_PADDING;
+
+  // Check if point is inside the selection rectangle
+  return pointX >= minX && pointX <= maxX && pointY >= minY && pointY <= maxY;
+}
+
+function isPointInPolygon(
+  pointX: number,
+  pointY: number,
+  polygon: Polygon,
+): boolean {
+  let inside = false;
+  for (
+    let i = 0, j = polygon.points.length - 1;
+    i < polygon.points.length;
+    j = i++
+  ) {
+    const xi = polygon.points[i].x;
+    const yi = polygon.points[i].y;
+    const xj = polygon.points[j].x;
+    const yj = polygon.points[j].y;
+    if (
+      yi > pointY !== yj > pointY &&
+      pointX < ((xj - xi) * (pointY - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
 export const getHitElement = (
   coordX: number,
   coordY: number,
@@ -150,8 +190,17 @@ export const getHitElement = (
   selectedShape: Shape | null = null,
 ) => {
   // If we have a selected shape, check if the point is in its selection rectangle
-  if (selectedShape && selectedShape.type === 'arrow') {
-    if (isPointInArrowSelection(coordX, coordY, selectedShape)) {
+  if (selectedShape) {
+    if (
+      selectedShape.type === 'arrow' &&
+      isPointInArrowSelection(coordX, coordY, selectedShape)
+    ) {
+      return selectedShape;
+    }
+    if (
+      selectedShape.type === 'polygon' &&
+      isPointInPolygonSelection(coordX, coordY, selectedShape)
+    ) {
       return selectedShape;
     }
   }
@@ -165,8 +214,8 @@ export const getHitElement = (
       switch (element.type) {
         case 'arrow':
           return isPointNearArrow(coordX, coordY, element);
-        // case 'polygon':
-        //   return isPointInPolygon(coordX, coordY, element);
+        case 'polygon':
+          return isPointInPolygon(coordX, coordY, element);
       }
     });
 };

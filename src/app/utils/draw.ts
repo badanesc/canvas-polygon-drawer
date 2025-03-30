@@ -193,3 +193,29 @@ export const drawArrowSelection = (
   ctx.stroke();
   ctx.setLineDash([]); // Reset line dash
 };
+
+export const drawPolygonSelection = (
+  canvas: HTMLCanvasElement,
+  points: Array<{x: number; y: number}>,
+) => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || points.length < 3) return;
+
+  // Calculate bounding box with padding
+  const padding = 10; // pixels of padding
+  const minX = Math.min(...points.map((p) => p.x)) - padding;
+  const maxX = Math.max(...points.map((p) => p.x)) + padding;
+  const minY = Math.min(...points.map((p) => p.y)) - padding;
+  const maxY = Math.max(...points.map((p) => p.y)) + padding;
+
+  // Draw selection rectangle
+  ctx.beginPath();
+  ctx.rect(minX, minY, maxX - minX, maxY - minY);
+
+  // Set selection style and stroke
+  ctx.strokeStyle = 'blue';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]); // Make the outline dashed
+  ctx.stroke();
+  ctx.setLineDash([]); // Reset line dash
+};

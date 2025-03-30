@@ -10,6 +10,7 @@ import {
   drawArrow,
   drawPolygon,
   drawArrowSelection,
+  drawPolygonSelection,
 } from '@/app/utils/draw';
 import {Shape, CanvasMode} from './types';
 import {getHitElement} from '@/app/utils/hitTest';
@@ -69,6 +70,10 @@ export default function Whiteboard() {
           break;
         case 'polygon':
           drawPolygon(canvas, shape.points);
+          // Draw selection outline if this shape is selected
+          if (selectedShape?.id === shape.id) {
+            drawPolygonSelection(canvas, shape.points);
+          }
           break;
       }
     });
@@ -95,11 +100,17 @@ export default function Whiteboard() {
       if (hitElement) {
         setSelectedShape(hitElement);
         setIsDragging(true);
-        // Calculate offset between pointer and shape's start point
+        // Calculate offset between pointer and shape's position
         if (hitElement.type === 'arrow') {
           setDragOffset({
             x: canvasX - hitElement.startX,
             y: canvasY - hitElement.startY,
+          });
+        } else if (hitElement.type === 'polygon') {
+          // For polygons, use the first point as the reference
+          setDragOffset({
+            x: canvasX - hitElement.points[0].x,
+            y: canvasY - hitElement.points[0].y,
           });
         }
       } else {
@@ -148,6 +159,39 @@ export default function Whiteboard() {
                 startY: newStartY,
                 endX: newStartX + dx,
                 endY: newStartY + dy,
+              }
+            : prev,
+        );
+      } else if (selectedShape.type === 'polygon') {
+        // Calculate new position
+        const newStartX = canvasX - dragOffset.x;
+        const newStartY = canvasY - dragOffset.y;
+        const dx = newStartX - selectedShape.points[0].x;
+        const dy = newStartY - selectedShape.points[0].y;
+
+        // Update all points of the polygon
+        const newPoints = selectedShape.points.map((point) => ({
+          x: point.x + dx,
+          y: point.y + dy,
+        }));
+
+        // Update shape position and maintain selection
+        setShapes((prev) =>
+          prev.map((shape) =>
+            shape.id === selectedShape.id
+              ? {
+                  ...shape,
+                  points: newPoints,
+                }
+              : shape,
+          ),
+        );
+        // Update selected shape to match new position
+        setSelectedShape((prev) =>
+          prev?.id === selectedShape.id
+            ? {
+                ...prev,
+                points: newPoints,
               }
             : prev,
         );
