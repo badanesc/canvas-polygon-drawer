@@ -1,31 +1,28 @@
 import styles from './AnnotationsList.module.css';
+import {useShapes} from '../../contexts/ShapesContext';
+import {Shape} from '../Whiteboard/types';
 
-const annotations = [
-  {
-    id: 1,
-    name: 'Face',
-    description: 'A face',
-  },
-  {
-    id: 2,
-    name: 'Image',
-    description: 'An image',
-  },
-  {
-    id: 3,
-    name: 'Sun',
-    description: 'A sun',
-  },
-];
+function getShapeDescription(shape: Shape): string {
+  switch (shape.type) {
+    case 'arrow':
+      return `Arrow from (${Math.round(shape.startX)}, ${Math.round(shape.startY)}) to (${Math.round(shape.endX)}, ${Math.round(shape.endY)})`;
+    case 'polygon':
+      return `Polygon with ${shape.points.length} points`;
+    default:
+      return 'Unknown shape';
+  }
+}
 
 export default function AnnotationsList() {
+  const {shapes} = useShapes();
+
   return (
     <ul className={styles.annotations}>
-      {annotations.map((annotation) => (
-        <li className={styles.annotation} key={annotation.id}>
-          <h2 className={styles.annotationName}>{annotation.name}</h2>
+      {shapes.map((shape) => (
+        <li className={styles.annotation} key={shape.id}>
+          <h2 className={styles.annotationName}>{shape.type}</h2>
           <p className={styles.annotationDescription}>
-            {annotation.description}
+            {getShapeDescription(shape)}
           </p>
         </li>
       ))}

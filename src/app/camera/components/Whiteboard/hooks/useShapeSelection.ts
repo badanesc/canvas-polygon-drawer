@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {Shape, CanvasMode} from '../types';
 import {
   getHitElement,
@@ -14,6 +14,21 @@ export const useShapeSelection = (shapes: Shape[]) => {
   const [dragOffset, setDragOffset] = useState({x: 0, y: 0});
   const [selectedPoint, setSelectedPoint] = useState<PolygonPointHit>(null);
   const [resizingHandle, setResizingHandle] = useState<ArrowHandleHit>(null);
+
+  // Handle ESC key to unselect shape
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedShape(null);
+        setIsDragging(false);
+        setSelectedPoint(null);
+        setResizingHandle(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handlePointerDown = (
     event: React.PointerEvent<HTMLCanvasElement>,

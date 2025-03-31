@@ -11,6 +11,7 @@ import {usePolygonPointDeletion} from './hooks/usePolygonPointDeletion';
 import {usePolygonPointAddition} from './hooks/usePolygonPointAddition';
 import {useCanvasResize} from './hooks/useCanvasResize';
 import {useElementDeletion} from './hooks/useElementDeletion';
+import {useShapes} from '../../contexts/ShapesContext';
 
 import {
   clearCanvas,
@@ -26,8 +27,8 @@ export default function Whiteboard() {
   const whiteboardRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const bgCanvasSize = useCanvasResize(whiteboardRef);
-  const [shapes, setShapes] = useState<Shape[]>([]);
   const [currentMode, setCurrentMode] = useState<CanvasMode>('select');
+  const {shapes, setShapes} = useShapes();
 
   // Use custom hooks for shape manipulation
   const {
@@ -63,7 +64,13 @@ export default function Whiteboard() {
     setSelectedPoint,
   );
 
-  useElementDeletion(selectedShape, shapes, setShapes, setSelectedShape);
+  useElementDeletion(
+    selectedShape,
+    shapes,
+    setShapes,
+    setSelectedShape,
+    selectedPoint,
+  );
 
   const {handleDoubleClick} = usePolygonPointAddition(
     shapes,
@@ -112,6 +119,16 @@ export default function Whiteboard() {
 
   const handleShapeComplete = (shape: Shape) => {
     setShapes((prev) => [...prev, shape]);
+    setCurrentMode('select'); // Switch back to select mode after drawing
+  };
+
+  const handleCanvasPointerDown = (
+    e: React.PointerEvent<HTMLCanvasElement>,
+  ) => {
+    // Only handle pointer events in select mode
+    if (currentMode === 'select') {
+      handlePointerDown(e, currentMode);
+    }
   };
 
   return (
@@ -123,7 +140,7 @@ export default function Whiteboard() {
         ref={bgCanvasRef}
         width={bgCanvasSize.width}
         height={bgCanvasSize.height}
-        onPointerDown={(e) => handlePointerDown(e, currentMode)}
+        onPointerDown={handleCanvasPointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
